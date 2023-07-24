@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 import scipy.ndimage
 from matplotlib.widgets import Slider
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt; plt.ion()
 import time
 from numpy.fft import fft2,ifft2,fftshift
 from scipy.optimize import leastsq
@@ -84,13 +84,13 @@ def take_image_pupils(cam,tt_mirror,amp):
     img = 0
     for k in range(0,4):
         if k == 0:
-            tt_mirror.move([amp,amp])
+            tt_mirror.move(0*amp,amp)
         elif k == 1:
-            tt_mirror.move([-amp,amp])
+            tt_mirror.move(-amp,0*amp)
         elif k == 2:
-            tt_mirror.move([-amp,-amp])
+            tt_mirror.move(-0*amp,-amp)
         elif k == 3:
-            tt_mirror.move([amp,-amp])
+            tt_mirror.move(amp,-0*amp)
         time.sleep(1)
         img = img+cam.get()
     tt_mirror.moveRef()
@@ -368,10 +368,10 @@ def build_pokeMatrix(wfs,dm,nRecPoke = None):
     nRec_offset = 5 # for other pokes
     nRec_waffle = 5 # FOR WAFFLE
     threshold_act = 10 # to select actuators only in a circle in percent of diameter
-    amp = 0.05 # AMPLITUDE POKE
-    amp_waffle = 0.2 # AMPLITUDE WAFFLE
-    x_dm_poke = np.array([15,35,35,15])
-    y_dm_poke = np.array([15,35,15,35])
+    amp = 0.2 # AMPLITUDE POKE
+    amp_waffle = 0.5 # AMPLITUDE WAFFLE
+    x_dm_poke = np.array([20,11,30,38])
+    y_dm_poke = np.array([10,34,41,20])
     number_valid_actuators = np.copy(dm.valid_actuators_number)
     # -------------------------------------------------------------------------------------
     
@@ -404,7 +404,7 @@ def build_pokeMatrix(wfs,dm,nRecPoke = None):
         wfs.reconNonLinear(img_pull,nRec)
         pull = wfs.phase_rec
         poke[:,:,i] = (push-pull)/(2*amp)
-        
+            
     # ------- Gaussian Fit 2 first pokes ------
     poke_rec = np.zeros((wfs.nPx,wfs.nPx,2))
     A_poke = []
@@ -416,11 +416,16 @@ def build_pokeMatrix(wfs,dm,nRecPoke = None):
         nPx = poke.shape[0]
         func = lambda param: np.ravel(gauss2d(param[0],param[1],param[2],param[3],nPx)-poke[:,:,i])
         if i == 0:
-            post_x_guess = nPx/2
-            post_y_guess = nPx/2
-        elif i == 1:
-            post_x_guess = nPx/4
-            post_y_guess = nPx/4
+            plt.figure()
+            im = plt.imshow(poke[:,:,i])
+            plt.show(block=False)
+            post_x_guess = int(input('x-guess:'))
+            post_y_guess = int(input('y-guess:'))
+        elif i == 1:              
+            im.set_data(poke[:,:,i])            
+            plt.show(block=False)
+            post_x_guess = int(input('x-guess:'))
+            post_y_guess = int(input('y-guess:'))
         param0 = np.array([-20,post_x_guess,post_y_guess,10])
         param_poke = leastsq(func,param0)
         A_poke.append(param_poke[0][0])

@@ -1,23 +1,30 @@
 
-from tools import *
+from tools_pwfs import *
 import os
 
 #%% ====================================================================
 #   ================= TT mirror =========================
 #   ====================================================================
 
+from scxkw.redisutil.typed_db import Redis
+from scxconf import REDIS_DB_HOST, REDIS_DB_PORT
+REDIS = Redis(REDIS_DB_HOST, REDIS_DB_PORT)
 
 class mirror_TT:
 
 	def __init__(self):
+		self.x_ref = REDIS.hget('X_ANALGC', 'value')
+		self.y_ref = REDIS.hget('X_ANALGD', 'value')
 
-	def move(self,[ampX,ampY]):
-		os.system('')
+	def move(self, ampX, ampY):
+		self.moveAbs(ampX+self.x_ref, ampY+self.y_ref)
 
+	def moveAbs(self, ampX, ampY):
+		os.system(f'ssh sc2 "/home/scexao/bin/devices/analog_output.py voltage C {ampX}"')
+		os.system(f'ssh sc2 "/home/scexao/bin/devices/analog_output.py voltage D {ampY}"')
+		time.sleep(0.5)
 	def moveRef(self):
-		os.system('')
-
-
+		self.moveAbs(self.x_ref, self.y_ref)
 
 
 
@@ -26,7 +33,7 @@ class mirror_TT:
 #   ====================================================================
 
 
-class camera:
+class Camera:
 	"""
 	This is a class to communicate with BlackFly cameras
 
@@ -57,10 +64,18 @@ class camera:
 		
 	def getDark(self,nFrames=None):
 		""" Take Dark image """ 
+		os.system(f'ssh sc2 "/home/scexao/bin/devices/pywfs_fcs_pickoff"')
+		time.sleep(0.5)
+
 		if nFrames is None:
 			nFrames = self.nFrames
 		self.dark = self.get(nFrames)
+		
+		os.system(f'ssh sc2 "/home/scexao/bin/devices/pywfs_fcs_pickoff"')
+		time.sleep(0.5)
 		print('Dark Frame taken')
+
+		return self.dark
 
 	def get(self,nFrames=None):
 		""" Get image from camera """ 
@@ -68,7 +83,7 @@ class camera:
 			nFrames = self.nFrames
 		image = 0
 		for k in range(0,nFrames):
-			im = self.ocam.get_data(True)
+			im = self.ocam.get_data(True).astype(np.float32)
 			image = image+im
 		image = image/nFrames
 		# remove dark
@@ -85,16 +100,17 @@ class DM:
 	def __init__(self,dm06):
 		""" CONSTRUCTOR """ 	
 		self.dm06 = dm06
+		self.nAct = 50
 		self.flat_surf = np.zeros((self.nAct,self.nAct))
 		# -------- Valid Actuator grid -----
-		self.nAct = 50
-		self.valid_actuators_map = load('pup.npy')
+		self.valid_actuators_map = np.load('../pup.npy')
 		# ---- Valid acuator with referencing number map ------
-		self.valid_actuators_number = np.copy(self.valid_actuators_map)
+		self.valid_actuators_number = \
+			np.zeros_like(self.valid_actuators_map, dtype=np.int32)
 		k = 1
 		for i in range(0,self.nAct):
 			for j in range(0,self.nAct):
-				if self.valid_actuators_number[i][j] == 1:
+				if self.valid_actuators_map[i][j] == 1:
 					self.valid_actuators_number[i][j] = k
 					k = k + 1
 		# ----- Valid acutators position -----------
@@ -168,6 +184,6 @@ class DM:
 		
 	def setSurf(self,cmd):
 		""" Apply DM map command """
-		self.dm06.set_data(cmd*self.valid_actuators_map)
+		self.dm06.set_data(cmd.astype(np.float32)*self.valid_actuators_map.astype(np.float32))
 		return cmd
 		

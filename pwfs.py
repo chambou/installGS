@@ -16,7 +16,7 @@ You can add any new object, but you will need to have this 2 methods in your cla
 
 """
 
-from tools import *
+from tools_pwfs import *
 from numpy import matlib
            
 #%% ====================================================================
