@@ -85,8 +85,28 @@ class DM:
 	def __init__(self,dm06):
 		""" CONSTRUCTOR """ 	
 		self.dm06 = dm06
-		self.nAct = 50
 		self.flat_surf = np.zeros((self.nAct,self.nAct))
+		# -------- Valid Actuator grid -----
+		self.nAct = 50
+		grid=np.mgrid[0:self.nAct,0:self.nAct]
+		rgrid=np.sqrt((grid[0]-self.nAct/2+0.5)**2+(grid[1]-self.nAct/2+0.5)**2)
+		self.valid_actuators_map = np.zeros((self.nAct,self.nAct)).astype(np.float32)
+		self.valid_actuators_map[np.where(rgrid<21.5)]=1
+		# ---- Valid acuator with referencing number map ------
+		self.valid_actuators_number = np.copy(self.valid_actuators_map)
+		k = 1
+		for i in range(0,self.nAct):
+			for j in range(0,self.nAct):
+				if self.valid_actuators_number[i][j] == 1:
+					self.valid_actuators_number[i][j] = k
+					k = k + 1
+		# ----- Valid acutators position -----------
+		X = np.round(np.linspace(0,self.nAct-1,self.nAct))
+		[xx_dm,yy_dm] = np.meshgrid(X,X) # actuators grid
+		#valid actuators
+		self.xx_dm = xx_dm[self.valid_actuators_map==1]
+		self.yy_dm = yy_dm[self.valid_actuators_map==1]
+
 
 	def pokeAct(self,amplitude,position,bias=None):
 		""" Poke actuator: take its position in X and Y """
