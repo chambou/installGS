@@ -88,10 +88,7 @@ class DM:
 		self.flat_surf = np.zeros((self.nAct,self.nAct))
 		# -------- Valid Actuator grid -----
 		self.nAct = 50
-		grid=np.mgrid[0:self.nAct,0:self.nAct]
-		rgrid=np.sqrt((grid[0]-self.nAct/2+0.5)**2+(grid[1]-self.nAct/2+0.5)**2)
-		self.valid_actuators_map = np.zeros((self.nAct,self.nAct)).astype(np.float32)
-		self.valid_actuators_map[np.where(rgrid<21.5)]=1
+		self.valid_actuators_map = load('pup.npy')
 		# ---- Valid acuator with referencing number map ------
 		self.valid_actuators_number = np.copy(self.valid_actuators_map)
 		k = 1
@@ -171,6 +168,6 @@ class DM:
 		
 	def setSurf(self,cmd):
 		""" Apply DM map command """
-		self.dm06.set_data(cmd)
+		self.dm06.set_data(cmd*self.valid_actuators_map)
 		return cmd
 		
